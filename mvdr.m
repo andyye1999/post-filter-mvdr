@@ -5,7 +5,8 @@
 % clear all;
 
 %[pcm, fs] = audioread('2.wav');
-[pcm, fs] = audioread('4ch.wav');
+%[pcm, fs] = audioread('4ch.wav');
+[pcm, fs] = audioread('test8far.wav');
 [num_point, num_channel] = size(pcm);
 pcm = pcm .* 2^15;
 frame_len = 400; % 
@@ -109,4 +110,4 @@ for j = 1:frame_shift:num_point
 end
 
 %audiowrite('2.mvdr_vad.global.wav', output ./ 2^15, fs);
-audiowrite('4ch.adapt.mvdr.wav', output ./ 2^15, fs);
+audiowrite('test8.adapt.mvdr.wav', output ./ 2^15, fs);

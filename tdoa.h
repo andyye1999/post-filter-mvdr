@@ -65,6 +65,8 @@ void GccPhatTdoa(const float *data, int num_channel, int num_sample,
             // * do inserse fft
             fft(corr_real + i * num_points, corr_img + i * num_points, -num_points);
             // * rearange idft index(fftshift), make num_points / 2 as the center
+            // 不太好理解，做了一个matlab中fftshift函数，fft函数先输出直流分量，然后是正频分量，接着是负频分量
+            // fftshift将频率按负频频率，直流分量，正频分量排列，详情看实时语音处理实践指南P12
             for (int j = 0; j < half; j++) {
                 float t = corr_real[i * num_points + j];
                 corr_real[i * num_points + j] = corr_real[i * num_points + j + half];
