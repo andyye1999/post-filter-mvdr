@@ -13,7 +13,7 @@
 #include "fft.h"
 #include "utils.h"
 #include "matrix.h"
-#define CHANNEL 8
+#define CHANNEL 6
 #define NUM 257
 #define ALPHA 0.5
 
@@ -113,7 +113,7 @@ public:
                     spectrum_c(0, j).img = -fft_img[j * fft_point_ + i];
                 }
                 local_covars_[i]->Mul(spectrum_t, spectrum_c);
-                float scale = 1.0 / local_covars_[i]->Trace();
+                float scale = 1.0 / local_covars_[i]->Trace(); // 归一化
                 local_covars_[i]->Scale(scale);
 
                 // update global covar
@@ -135,9 +135,9 @@ public:
             float f = i * sample_rate_ / fft_point_;
             // calc alpha acorrding to tdoa 
             for (int j = 0; j < num_channel_; j++) {
-                alpha(j, 0).real = cos(M_2PI * f * tdoa[j]);
+                alpha(j, 0).real = cos(M_2PI * f * tdoa[j]); // 导向向量
                 alpha(j, 0).img = -sin(M_2PI * f * tdoa[j]);
-                alpha_tc(0, j).real = cos(M_2PI * f * tdoa[j]);
+                alpha_tc(0, j).real = cos(M_2PI * f * tdoa[j]); // 导向向量共轭转置
                 alpha_tc(0, j).img = sin(M_2PI * f * tdoa[j]);
             }
             // inverse covariance matrix
@@ -190,7 +190,7 @@ public:
                 }
             }
             
-            // 5.1 conj(w_) .* s
+            // 5.1 conj(w_) .* s  conj共轭转置
             for (int j = 0; j < num_channel_; j++) {
                 for (int i = 0; i < num_valid_point_; i++) {
                     float a = fft_real[j * fft_point_ + i], 
