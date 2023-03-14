@@ -1,6 +1,7 @@
 # post filter mvdr  
 
 原始工程为[beamforming](https://github.com/robin1001/beamforming)，在此基础上增加mvdrZelinski.cc  
+添加mvdrLefkin.cc  Lefkin post filter 中高频失真有所改善 
 原始readme如下  
 
 # Beamforming Toolkit
