@@ -2,14 +2,14 @@
  * @Author: yehongcen 
  * @Date: 2023-03-08 20:52:47 
  * @Last Modified by: yehongcen
- * @Last Modified time: 2023-03-08 21:05:33
+ * @Last Modified time: 2023-03-10 16:56:55
  */
 
 
 #include <stdio.h>
 
 #include "wav.h"
-#include "tdoa.h"
+#include "tdoafloat.h"
 #include "mvdrLefkin.h"
 #include "vad.h"
 #include "parse-option.h"
@@ -33,10 +33,10 @@ int main(int argc, char *argv[]) {
                 "energy threshold for energy based vad");//基于能量的VAD的能量阈值
     int sil_to_speech_trigger = 3;
     po.Register("sil-to-speech-trigger", &sil_to_speech_trigger,
-                "num frames for silence to speech trigger");
+                "num frames for silence to speech trigger"); //静音转语音触发的帧数
     int speech_to_sil_trigger = 10;
     po.Register("speech-to-sil-trigger", &speech_to_sil_trigger,
-                "num frames for speech to silence trigger");
+                "num frames for speech to silence trigger");//语音转静音触发的帧数
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
     const float *pcm = reader.Data();
     float *out_pcm = (float *)calloc(sizeof(float), num_sample);
     float *tdoa = (float *)calloc(sizeof(float), num_channel);
+    int *tdoaW32 = (int*)calloc(sizeof(int),num_channel);
    
     Vad vad;
     VadInit(&vad, energy_thresh, sil_to_speech_trigger, speech_to_sil_trigger);
@@ -85,16 +86,16 @@ int main(int argc, char *argv[]) {
         // Because gccphat based time-delay is not very precise
         // so here we time-delay is not supported here
         // we suppose the signal arrive sensors at the same time(90)
-        
+        GccPhatTdoa(data, num_channel, num_point_per_frame, 0, num_point_per_frame / 2, tdoa);
         // do vad (is noise or not)
         bool is_speech = IsSpeech(&vad, data, num_point_per_frame); 
 
         // do MVDR
         // 32768
-        for(int k = 0;k < num_point_per_frame * num_channel;k++)
-        {
-            data[k] /= 32768;
-        }
+        // for(int k = 0;k < num_point_per_frame * num_channel;k++)
+        // {
+        //     data[k] /= 32768;
+        // }
         mvdr.DoBeamformimg(data, num_point_per_frame, !is_speech, 
                            tdoa, out_pcm + i);
         // for(int n = 0;n < num_point_per_frame;n++)
@@ -105,10 +106,10 @@ int main(int argc, char *argv[]) {
     }
 
     // Write outfile
-    for(int n = 0;n < num_sample;n++)
-    {
-        out_pcm[n] *= 32768;
-    }
+    // for(int n = 0;n < num_sample;n++)
+    // {
+    //     out_pcm[n] *= 32768;
+    // }
     WavWriter wav_writer(out_pcm, num_sample, 1, sample_rate, 
                          reader.BitsPerSample());
     wav_writer.Write(output_file.c_str());

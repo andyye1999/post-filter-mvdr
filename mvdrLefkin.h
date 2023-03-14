@@ -2,7 +2,7 @@
  * @Author: yehongcen 
  * @Date: 2023-03-08 20:52:06 
  * @Last Modified by: yehongcen
- * @Last Modified time: 2023-03-08 23:14:49
+ * @Last Modified time: 2023-03-10 17:08:24
  */
 
 #ifndef MVDR_H_
@@ -46,28 +46,14 @@ public:
         global_covars_.resize(num_valid_point_); //协方差矩阵         
         local_covars_.resize(num_valid_point_);
         w_.resize(num_valid_point_);
+        Fvv.resize(num_valid_point_);
         for (int i = 0; i < num_valid_point_; i++) {
             global_covars_[i] = new ComplexMatrix(num_channel_, num_channel_);
             local_covars_[i] = new ComplexMatrix(num_channel_, num_channel_);
             w_[i] = new ComplexMatrix(num_channel_, 1);
+            Fvv[i] = new Matrix(num_channel_,num_channel_);
         }
-        for(int i = 0;i < num_channel_;i++)
-        {
-            for(int j = 0;j < num_valid_point_;j++)
-            {
-                Pii[i][j] = 1;
-            }
-        }
-        for (int m = 0; m < num_channel_ - 1; m++)
-        {
-            for (int n = m + 1; n < num_channel_; n++)
-            {
-                for (int i = 0; i < num_valid_point_; i++)
-                {
-                    Pij[m][n][i] = 1;    
-                }
-            }
-        }
+        
         R = 0.05;
         // 第一行元素
         float first_line[] = {0, 0.05, 0.0866025, 0.1, 0.0866025, 0.2};
@@ -105,6 +91,7 @@ public:
                 {
                     if (T[i][j][k] > 0.7)
                         T[i][j][k] = 0.7;
+                    (*Fvv[k])(i,j) = T[i][j][k];
                 }
             }
         }
@@ -116,6 +103,7 @@ public:
             delete global_covars_[i];
             delete local_covars_[i];
             delete w_[i];
+            delete Fvv[i];
         }
     }
     
@@ -197,11 +185,47 @@ public:
             //w_[i]->Print(); // mvdr
         }
 
-        // 5. sum 
-        
-        
+        // 5. sum
+        if (frame_count_ < 100)
+        {
+            for (int j = 0; j < num_channel_; j++)
+            {
+                for (int i = 0; i < num_valid_point_; i++)
+                {
+                    Pii[j][i] = fft_real[j * fft_point_ + i] * fft_real[j * fft_point_ + i] + fft_img[j * fft_point_ + i] * fft_img[j * fft_point_ + i];    
+                }
+            }
+            for (int m = 0; m < num_channel_ - 1; m++)
+            {
+                for (int n = m + 1; n < num_channel_; n++)
+                {
+                    for (int i = 0; i < num_valid_point_; i++)
+                    {
+                        Pij[m][n][i] = fft_real[m * fft_point_ + i] * fft_real[n * fft_point_ + i] + fft_img[m * fft_point_ + i] * fft_img[n * fft_point_ + i];
+                    }
+                }
+            }
+        }
+
         float vv1;
         float vv2;
+        Matrix bf_weights(num_channel_, 1), bf_weights_tc(1, num_channel_);
+        Matrix Fvv_copy(num_channel_,num_channel_);
+        Matrix right(num_channel_,1),left(1,1);
+        float gamma[NUM];
+        for (int j = 0; j < num_channel_; j++)
+        {
+            bf_weights(j, 0) = 0.25;
+            bf_weights_tc(0, j) = 0.25;
+        }
+        //bf_weights.Print();
+        for (int i = 0; i < num_valid_point_; i++)
+        {
+            Fvv_copy.Copy(*Fvv[i]);
+            right.Mul(Fvv_copy,bf_weights);
+            left.Mul(bf_weights_tc,right);
+            gamma[i] = left(0,0);
+        }
         {
             // post filtering
             
@@ -270,7 +294,7 @@ public:
             float beita = 1;
             for(int i = 0;i < num_valid_point_;i++)
             {
-                h[i] = snr[i] / (beita + snr[i]);  //Lefkin后置滤波
+                h[i] = snr[i] / (gamma[i] + snr[i]);  //Lefkin后置滤波
                 //if(h[i] < 0) h[i] = -h[i];
             }
             for (int i = 0; i < num_valid_point_; i++) {
@@ -304,6 +328,7 @@ private:
     int num_valid_point_;
     std::vector<ComplexMatrix *> global_covars_, local_covars_;
     std::vector<ComplexMatrix *> w_;
+    std::vector<Matrix *> Fvv;
     float Pii[CHANNEL][NUM];
     float Pij[CHANNEL][CHANNEL][NUM];
     float d[CHANNEL][CHANNEL];
